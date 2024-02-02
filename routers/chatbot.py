@@ -117,7 +117,7 @@ async def chat(slug: str, msg: list = Body(embed=True)):
     
     url = f"https://api.elevenlabs.io/v1/text-to-speech/21m00Tcm4TlvDq8ikWAM"
     CHUNK_SIZE = 25
-    api_key = "c692471fc3c7eed89195edbcdc32367c"
+    api_key = "ea7ab0a6e4a8a5c6840ade0b14c84aca"
     headers = {
         "Accept": "audio/mpeg",
         "Content-Type": "application/json",
@@ -135,11 +135,11 @@ async def chat(slug: str, msg: list = Body(embed=True)):
 
     response = requests.post(url, json=data, headers=headers)
     print(base64.b64encode(response.content).decode('utf-8'))
-    # with open('output.mp3', 'wb') as f:
-    #     for chunk in response.iter_content(chunk_size=CHUNK_SIZE):
-    #         if chunk:
-    #             print(chunk)
-                # f.write(chunk)
+    with open('output.mp3', 'wb') as f:
+        for chunk in response.iter_content(chunk_size=CHUNK_SIZE):
+            if chunk:
+                print(chunk)
+                f.write(chunk)
     current_time = time.time()
     print(current_time - start_time)
     return {"status": "success", "data": {"msg": reply, "audioBase64": base64.b64encode(response.content).decode('utf-8')}}
