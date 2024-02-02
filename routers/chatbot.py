@@ -70,7 +70,7 @@ async def get_chatbot_by_slug(slug: str):
 async def chat(slug: str, msg: list = Body(embed=True)):
     chatbot = Chatbots.find_one({"slug": slug})
     messages = []
-    messages.append({"role": "system", "content": chatbot["role_play_system_prompt"]})
+    messages.append({"role": "system", "content": chatbot["role_play_system_prompt"] + "\nWhenver you answer to user's question, you should answer with one sentence that is not too long.(about 15 words)"})
     for item in msg:
         messages.append({"role": item["type"], "content": item["text"]})
     start_time = time.time()  
