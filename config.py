@@ -16,7 +16,9 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str
 
     CLIENT_ORIGIN: str
-
+    TWILIO_ACCOUNT_SID: str
+    TWILIO_AUTH_TOKEN: str
+    TWILIO_PHONE_NUMBER: str
     class Config:
         env_file = "./.env"
 

@@ -3,7 +3,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
 from config import settings
-from routers import voices, chatbot
+from routers import voices, chatbot, call
 
 import uvicorn
 
@@ -23,6 +23,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 app.include_router(voices.router, prefix="/api/voices")
 app.include_router(chatbot.router, prefix="/api/chatbots")
+app.include_router(call.router)
 
 
 @app.get("/")
