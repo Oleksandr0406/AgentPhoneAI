@@ -65,18 +65,23 @@ async def get_chatbot_by_slug(slug: str):
     chatbot = Chatbots.find_one({"slug": slug})
     return {"status": "success", "data": chatbot_details_entity(chatbot)}
 
+# @router.post("/{slug}/init-chat", tags=["Chatbot"])
+# async def chat(slug: str, msg: list = Body(embed=True)):
 
 @router.post("/{slug}/chat", tags=["Chatbot"])
 async def chat(slug: str, msg: list = Body(embed=True)):
     chatbot = Chatbots.find_one({"slug": slug})
     messages = []
-    messages.append({"role": "system", "content": chatbot["role_play_system_prompt"] + "\nWhenver you answer to user's question, you should answer with one sentence that is not too long.(about 15 words)"})
+    messages.append({"role": "system", "content": chatbot["role_play_system_prompt"] + '\n' + chatbot["guide_system_prompt"] + "When you answer or ask questions, you have to say the sentence with less than 20 words."})
     for item in msg:
         messages.append({"role": item["type"], "content": item["text"]})
+    print(chatbot["guide_system_prompt"])
+    if len(msg) == 0:
+        messages.append({"role": "user", "content": 'Please try instructions one by one.'})
     start_time = time.time()  
     response = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=messages)
     reply = response.choices[0].message.content
-      
+    
     
     current_time = time.time()
     print(current_time - start_time)
@@ -117,13 +122,13 @@ async def chat(slug: str, msg: list = Body(embed=True)):
     
     url = f"https://api.elevenlabs.io/v1/text-to-speech/21m00Tcm4TlvDq8ikWAM"
     CHUNK_SIZE = 25
-    api_key = "ea7ab0a6e4a8a5c6840ade0b14c84aca"
+    api_key = "def7138943e286ec6df4843ce41c303b"
     headers = {
         "Accept": "audio/mpeg",
         "Content-Type": "application/json",
         "xi-api-key": api_key,
     }
-
+    print(reply)
     data = {
         "text": reply,
         "model_id": "eleven_monolingual_v1",
@@ -134,12 +139,13 @@ async def chat(slug: str, msg: list = Body(embed=True)):
     }
 
     response = requests.post(url, json=data, headers=headers)
+    print(response)
     print(base64.b64encode(response.content).decode('utf-8'))
-    with open('output.mp3', 'wb') as f:
-        for chunk in response.iter_content(chunk_size=CHUNK_SIZE):
-            if chunk:
-                print(chunk)
-                f.write(chunk)
+    # with open('output.mp3', 'wb') as f:
+    #     for chunk in response.iter_content(chunk_size=CHUNK_SIZE):
+    #         if chunk:
+    #             print(chunk)
+    #             f.write(chunk)
     current_time = time.time()
     print(current_time - start_time)
     return {"status": "success", "data": {"msg": reply, "audioBase64": base64.b64encode(response.content).decode('utf-8')}}

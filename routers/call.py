@@ -13,13 +13,18 @@ from dotenv import load_dotenv
 import urllib.request
 import asyncio
 from urllib.parse import urljoin
+from database import Chatbots
+from models import add_new_message, Message, find_messages_by_id, delete_summary_db_id
+
 
 load_dotenv()
 
 router = APIRouter()
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
-
+role_play_system_prompt=""
+guide_system_prompt=""
+bot_name=""
 async def transcribe(recording_url):
     hash = str(random.getrandbits(32))
     try:
@@ -33,15 +38,25 @@ async def transcribe(recording_url):
     os.remove(hash + ".wav")
     return transcript
 
-
-@router.get("/make-call/{phoneNumber}")
-def make_call(request: Request, phoneNumber: str):
+    
+@router.get("/make-call/{slug}/{phoneNumber}")
+def make_call(request: Request, slug: str, phoneNumber: str):
+    global role_play_system_prompt, guide_system_prompt, bot_name
+    
     account_sid = os.getenv('TWILIO_ACCOUNT_SID')
     auth_token = os.getenv('TWILIO_AUTH_TOKEN')
     twilio_number = os.getenv('TWILIO_PHONE_NUMBER')
     client = Client(account_sid, auth_token)
+    
+    chatbot = Chatbots.find_one({"slug": slug})
+    role_play_system_prompt=chatbot['role_play_system_prompt']
+    guide_system_prompt=chatbot['guide_system_prompt']
+    bot_name = slug
+    delete_summary_db_id(bot_name)
+    print(role_play_system_prompt,"\n-----\n", guide_system_prompt,"\n-----\n", bot_name)
+    
     phoneNumber = phoneNumber.strip()
-    print(phoneNumber)
+    # print(phoneNumber)
     print(request.base_url)
     call = client.calls.create(
         url=urljoin(str(request.base_url), "/gather"),
@@ -58,18 +73,23 @@ async def gather_response(request: Request):
     print("enter gather")
     # Check if we have a SpeechResult from the caller
     speech_result = data.get('SpeechResult', '').strip()
-
+    print(speech_result)
     if speech_result:
         print("here")
         # If there is a SpeechResult, process it in the /process_speech endpoint
         return await process_speech(request)
     else:
         # If there is no SpeechResult, this is the first time the caller is being prompted
-        # response.say("enter goldrace")
+        messages = []
+        messages.append({"role": "system", "content": role_play_system_prompt + '\n' + guide_system_prompt + "When you answer or ask questions, you have to say the sentence with less than 20 words."})
+        messages.append({"role": "user", "content": "Please try instructions one by one."})
+        openai_response = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=messages)
+        reply = openai_response.choices[0].message.content
         gather = Gather(input='speech', action='/process_speech', method='POST', speechTimeout='auto')
-        gather.say("Hello! Thank you for answering a call. How can I assist you today? If you have any questions, please tell me your response after the beep.")
+        gather.say(f"Hello! Thank you for answering a call. {reply}")
         response.append(gather)
-
+        add_new_message(logId=bot_name, msg=Message(content="Please try instructions one by one.", role="user"))
+        add_new_message(logId=bot_name, msg=Message(content=reply, role="assistant"))
     return Response(content=str(response), media_type="application/xml")
 
 @router.post("/process_speech")
@@ -81,19 +101,23 @@ async def process_speech(request: Request):
     response = VoiceResponse()
     if speech_result:
         print(speech_result)
-        messages = []
-        messages.append({"role": "system", "content": "Whenver you answer to user's question, you should answer with one sentence that is not too long.(about 15 words)"})
-        messages.append({"role": "user", "content": speech_result})
+        saved_messages = find_messages_by_id(bot_name)
+        messages = [{'role': message.role, 'content': message.content}
+                for message in saved_messages]
+        print(messages)
+        messages.insert(0, {"role": "system", "content": role_play_system_prompt + '\n' + guide_system_prompt + "When you answer or ask questions, you have to say only one or two sentences with less than 15 words."})
+        messages.append({'role': 'user', 'content': speech_result + "please answer with only one or two sentences whose length is less than 15 words."})
+        
         openai_response = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=messages)
         reply = openai_response.choices[0].message.content
         response.say(reply)
         print("reply: ", reply)
         gather = Gather(input='speech', action='/process_speech', method='POST', speechTimeout='auto')
         response.append(gather)
-        
+        add_new_message(logId=bot_name, msg=Message(content=speech_result, role="user"))
+        add_new_message(logId=bot_name, msg=Message(content=reply, role="assistant"))
     else:
-        response.say("Ok. It's goldrace's openai test.")
-        # response.say("I didn't catch that. Please tell me your response after the beep.")
+        response.say("Ok. So much for today. Good bye.")
         # Set up a new Gather to re-prompt the caller
         gather = Gather(input='speech', action='/process_speech', method='POST', speechTimeout='auto')
         response.append(gather)
