@@ -150,3 +150,4 @@ async def chat(slug: str, msg: list = Body(embed=True)):
     print(current_time - start_time)
     return {"status": "success", "data": {"msg": reply, "audioBase64": base64.b64encode(response.content).decode('utf-8')}}
     # return base64.b64encode(response.content).decode('utf-8')
+    
