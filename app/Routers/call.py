@@ -13,8 +13,8 @@ from dotenv import load_dotenv
 import urllib.request
 import asyncio
 from urllib.parse import urljoin
-from database import Chatbots
-from models import add_new_message, Message, find_messages_by_id, delete_summary_db_id
+from app.database import Chatbots
+from app.Models.models import add_new_message, Message, find_messages_by_id, delete_summary_db_id
 
 
 load_dotenv()

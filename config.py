@@ -2,10 +2,8 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    PLAY_HT_USER_ID: str
-    PLAY_HT_SECRET_KEY: str
     OPENAI_API_KEY: str
-
+    ELEVENLABS_API_KEY: str
     MONGO_INITDB_DATABASE: str
     DATABASE_URL: str
 
@@ -19,6 +17,11 @@ class Settings(BaseSettings):
     TWILIO_ACCOUNT_SID: str
     TWILIO_AUTH_TOKEN: str
     TWILIO_PHONE_NUMBER: str
+    
+    PINECONE_API_KEY: str
+    PINECONE_ENV: str
+    PINECONE_INDEX: str
+    
     class Config:
         env_file = "./.env"
 

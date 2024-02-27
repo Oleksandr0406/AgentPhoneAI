@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from database import db
+from app.database import db
 from typing import List
 from bson import json_util
 from bson.objectid import ObjectId

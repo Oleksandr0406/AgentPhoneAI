@@ -1,18 +1,23 @@
-from fastapi import APIRouter, UploadFile, File, Body, HTTPException, status
+from fastapi import APIRouter, UploadFile, File, Body, HTTPException, status, Form
 import aiofiles
 import json
 import openai
 import requests
 import time
-from serializers import chatbot_entity, chatbot_details_entity
-from utils import generate_filename, generate_slug
-from database import Chatbots
+from app.serializers import chatbot_entity, chatbot_details_entity
+from app.Utils.utils import generate_filename, generate_slug
+from app.Utils.pinecone import train_csv, train_pdf, train_txt, train_ms_word
+from app.database import Chatbots
 from config import settings
 import base64
+import os
+import shutil
+
 
 openai.api_key = settings.OPENAI_API_KEY
 router = APIRouter()
 
+supported_file_extensions = [".csv", ".pdf", ".txt", ".doc", ".docx"]
 
 @router.post("/", tags=["Chatbot"])
 async def create_chatbot(
@@ -65,8 +70,6 @@ async def get_chatbot_by_slug(slug: str):
     chatbot = Chatbots.find_one({"slug": slug})
     return {"status": "success", "data": chatbot_details_entity(chatbot)}
 
-# @router.post("/{slug}/init-chat", tags=["Chatbot"])
-# async def chat(slug: str, msg: list = Body(embed=True)):
 
 @router.post("/{slug}/chat", tags=["Chatbot"])
 async def chat(slug: str, msg: list = Body(embed=True)):
@@ -85,44 +88,10 @@ async def chat(slug: str, msg: list = Body(embed=True)):
     
     current_time = time.time()
     print(current_time - start_time)
-    # url = "https://play.ht/api/v2/tts"
-
-    # start_time = time.time()
-    
-    # payload = {
-    #     "text": reply,
-    #     "voice": "larry",
-    #     "quality": "medium",
-    #     "output_format": "mp3",
-    #     "speed": 1,
-    #     "sample_rate": 24000,
-    #     "voice_engine": "PlayHT1.0",
-    # }
-    # headers = {
-    #     "accept": "text/event-stream",
-    #     "content-type": "application/json",
-    #     "AUTHORIZATION": settings.PLAY_HT_SECRET_KEY,
-    #     "X-USER-ID": settings.PLAY_HT_USER_ID,
-    # }
-
-    # response = requests.post(url, json=payload, headers=headers, stream=True)
-    # print(response.text)
-    # lines = response.text.split("\n")
-    # lines = filter(None, lines)
-    # events = []
-    # for line in lines:
-    #     if line.startswith("data:"):
-    #         if "{" in line:
-    #             event = json.loads(line.replace("data: ", ""))
-    #             events.append(event)
-    # url = events[len(events) - 1]["url"]
-    # print(url)
-    
-    # return {"status": "success", "data": {"msg": reply, "audioBase64": url}}
     
     url = f"https://api.elevenlabs.io/v1/text-to-speech/21m00Tcm4TlvDq8ikWAM"
     CHUNK_SIZE = 25
-    api_key = "def7138943e286ec6df4843ce41c303b"
+    api_key = settings.ELEVENLABS_API_KEY
     headers = {
         "Accept": "audio/mpeg",
         "Content-Type": "application/json",
@@ -141,13 +110,47 @@ async def chat(slug: str, msg: list = Body(embed=True)):
     response = requests.post(url, json=data, headers=headers)
     print(response)
     print(base64.b64encode(response.content).decode('utf-8'))
+    
     # with open('output.mp3', 'wb') as f:
     #     for chunk in response.iter_content(chunk_size=CHUNK_SIZE):
     #         if chunk:
     #             print(chunk)
     #             f.write(chunk)
+    
     current_time = time.time()
     print(current_time - start_time)
     return {"status": "success", "data": {"msg": reply, "audioBase64": base64.b64encode(response.content).decode('utf-8')}}
-    # return base64.b64encode(response.content).decode('utf-8')
     
+
+
+
+@router.post("/{slug}/add-training-file")
+def add_training_file_api(slug: str, file: UploadFile = File(...)):
+    extension = os.path.splitext(file.filename)[1]
+    if extension not in supported_file_extensions:
+        raise HTTPException(
+            status_code=500, detail="Invalid file type!")
+    # print("valid filetype")
+    try:
+        # save file to server
+        directory = "./train-data"
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+        with open(f"{directory}/{slug}-{file.filename}", "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+
+        # add training file
+        if extension == ".csv":
+            train_csv(file.filename, slug)
+        elif extension == ".pdf":
+            train_pdf(file.filename, slug)
+        elif extension == ".txt":
+            train_txt(file.filename, slug)
+        elif extension == ".docx":
+            train_ms_word(file.filename, slug)
+        print("end-training")
+        add_file(slug, file.filename)
+    except Exception as e:
+        print("training error")
+        raise HTTPException(
+            status_code=500, detail=e)

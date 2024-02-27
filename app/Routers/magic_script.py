@@ -4,9 +4,9 @@ import json
 import openai
 import requests
 import time
-from serializers import chatbot_entity, chatbot_details_entity
-from utils import generate_filename, generate_slug
-from database import Chatbots
+from app.serializers import chatbot_entity, chatbot_details_entity
+from app.Utils.utils import generate_filename, generate_slug
+from app.database import Chatbots
 from config import settings
 import base64
 import os
@@ -116,21 +116,17 @@ def generate_framwork(input: str):
 
 @router.post("/{slug}/from_audio", tags=["Chatbot"])
 def script_from_record(slug:str, record: UploadFile = Form(...)):
-    print(slug)
     UPLOAD_DIRECTORY = "./data"
     file_location = os.path.join(UPLOAD_DIRECTORY, record.filename)
     with open(file_location, "wb") as buffer:
         shutil.copyfileobj(record.file, buffer)
     transcript = transcript_audio_file(file_location)
     framwork = generate_framwork(transcript)
-    print(framwork)
     return framwork
     
 
 @router.post("/{slug}/from_text", tags=["Chatbot"])
 def script_from_text(slug:str, text: str = Form(...)):
-    print(slug)
     framwork = generate_framwork(text)
-    print(framwork)
     return framwork
     

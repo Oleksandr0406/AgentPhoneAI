@@ -3,7 +3,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
 from config import settings
-from routers import voices, chatbot, call, magic_script
+from app.Routers import voices, chatbot, call, magic_script
 
 import uvicorn
 
