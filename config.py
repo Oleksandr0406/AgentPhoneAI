@@ -22,6 +22,8 @@ class Settings(BaseSettings):
     PINECONE_ENV: str
     PINECONE_INDEX: str
     
+    TRAIN_DATA_DIRECTORY: str
+    
     class Config:
         env_file = "./.env"
 
