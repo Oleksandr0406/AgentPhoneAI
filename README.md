@@ -7,7 +7,7 @@ Follow these steps to set up the environment and run the application on Ubuntu 2
 
 Before you begin, ensure you have Python installed on your system. This project requires Python 3.8 or higher. You can check your Python version by running:
 
-bash
+```bash
 python3 --version
 
 
