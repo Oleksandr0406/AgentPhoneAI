@@ -9,7 +9,7 @@ Before you begin, ensure you have Python installed on your system. This project 
 
 ```bash
 python3 --version
-
+```
 
 If Python is not installed, you can install it using the following command:
 
